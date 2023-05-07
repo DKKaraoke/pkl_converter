@@ -6,7 +6,10 @@ import json
 import codecs
 import binascii
 
+global offset
+
 class PklHeader:
+    global offset
     def parse_PklHeader(self, fr):
         self.fileSize = hex(int.from_bytes(fr.read(4), 'big'))
         self.headersize = hex(int.from_bytes(fr.read(4), 'big'))
@@ -33,6 +36,7 @@ class PklHeader:
         self.composer = fr.read(self.composerSize).decode('Shift-JIS', 'backslashreplace')
 
 class TrackHeader:
+    global offset
     def parse_TrackHeader(self, fr):
         trackDataHeaderSize = int.from_bytes(fr.read(1), 'big')
         if trackDataHeaderSize == 8:
@@ -58,6 +62,7 @@ class TrackHeader:
             raise RuntimeError(f"[sng] Bad Trackdata header size [{trackDataHeaderSize}]")
 
 class TrackData:
+    global offset
     def parse_TrackData(self, fr):
         print("[sng] stpdc_sngdatReadTrackData start")
         numofpage = 0
@@ -65,7 +70,7 @@ class TrackData:
         while True:
             nextPageBlock = int.from_bytes(fr.read(4), 'big')
             numofpage += 1
-            fr.seek(nextPageBlock, os.SEEK_SET)
+            fr.seek(nextPageBlock + offset, os.SEEK_SET)
             if nextPageBlock == 0:
                 break
         if numofpage == 0:
@@ -96,7 +101,7 @@ class TrackData:
                 return
             nextPage = self.parse_Page(fr, self.pPageList[i], nextPage)
             if nextPage != 0:
-                fr.seek(nextPage, os.SEEK_SET)
+                fr.seek(nextPage + offset, os.SEEK_SET)
                 i += 1
     
     def parse_Page(self, fr, data_page, nextPos):
@@ -151,9 +156,9 @@ class TrackData:
                         #data_page['pLineList'][i]['pParentPage'] = data_page
                         data_page['pLineList'][i]['nLineNum'] = i + 1
                         if nextLine != 0:
-                            fr.seek(nextLine, os.SEEK_SET)
+                            fr.seek(nextLine + offset, os.SEEK_SET)
                         i += 1
-                fr.seek(tempUInt, os.SEEK_SET)
+                fr.seek(tempUInt + offset, os.SEEK_SET)
         else:
             raise RuntimeError(f"[sng] wrong page data size [{pageDataSize}]")
                     
@@ -287,14 +292,19 @@ class TrackData:
             raise RuntimeError(f"[sng] Wrong Image data header size({tempUShort}).")
 
 def main():
+    global offset
     parser = argparse.ArgumentParser(description="Adds BGEV to RQIF file without BGEV.")
     parser.add_argument("input", help="Path to input file.")
     #parser.add_argument("output", help="Path to output file.")
     args = parser.parse_args()
     fr = open(args.input, 'rb')
+    offset = 0
+    if fr.read(4) == b'SPRC':
+        offset = 0x10
+    fr.seek(offset, os.SEEK_SET)
     header = PklHeader()
     header.parse_PklHeader(fr)
-    fr.seek(header.posTrack, os.SEEK_SET)
+    fr.seek(header.posTrack + offset, os.SEEK_SET)
     track_header = TrackHeader()
     track_header.parse_TrackHeader(fr)
     track_data = TrackData()
