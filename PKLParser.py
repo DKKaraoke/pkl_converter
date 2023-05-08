@@ -94,7 +94,7 @@ class TrackData:
         fr.seek(topoftrackdata, os.SEEK_SET)
 
         nextPage = 0
-        i = 1
+        i = 0
         while True:
             if numofpage <= i:
                 print("[sng] stpdc_sngdatReadTrackData end")
@@ -102,7 +102,7 @@ class TrackData:
             nextPage = self.parse_Page(fr, self.pPageList[i], nextPage)
             if nextPage != 0:
                 fr.seek(nextPage + offset, os.SEEK_SET)
-                i += 1
+            i += 1
     
     def parse_Page(self, fr, data_page, nextPos):
         linenum = 0
