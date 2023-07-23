@@ -192,7 +192,7 @@ class TrackData:
     def encode_ScrollInfo(self, page_dict):
         # tempUChar
         if page_dict["bScroll"] == 1:
-            self.binary += int(0xF).to_bytes(1, "big")
+            self.binary += int(0xC).to_bytes(1, "big")
         elif page_dict["bScroll"] == 0:
             self.binary += int(0).to_bytes(1, "big")
             return
@@ -402,11 +402,8 @@ class TrackData:
             )
             if picture["pictureData"]["pictureDataSize"] == 0:
                 return
-            picture["pictureData"]["pImageData"] = (
-                "0x"
-                + binascii.hexlify(
-                    fr.read(picture["pictureData"]["pictureDataSize"])
-                ).decode()
+            picture["pictureData"]["pImageData"] = fr.read(
+                picture["pictureData"]["pictureDataSize"]
             )
         else:
             raise RuntimeError(f"[sng] Wrong Image data header size({tempUShort}).")
@@ -418,9 +415,29 @@ class TrackData:
         self.binary += b"\0"
         self.binary += picture["pictureData"]["sTitlePosX"].to_bytes(2, "big")
         self.binary += picture["pictureData"]["sTitlePosY"].to_bytes(2, "big")
-        image_data = binascii.unhexlify(picture["pictureData"]["pImageData"][2:])
-        if "pictureDataSize" in picture["pictureData"] and False:
+        fr_image = open(picture["pictureData"]["pImageData"], "rb")
+        image_data = fr_image.read()
+        fr_image.close()
+        if "pictureDataSize" in picture["pictureData"]:
             self.binary += picture["pictureData"]["pictureDataSize"].to_bytes(4, "big")
         else:
             self.binary += int(len(image_data)).to_bytes(4, "big")
         self.binary += image_data
+
+    def write_images(self, base_name: str):
+        for page_num in range(len(self.pPageList)):
+            current_page = self.pPageList[page_num]
+            for line_num in range(len(current_page["pLineList"])):
+                current_line = current_page["pLineList"][line_num]
+                if current_line["nDispType"] != 1:
+                    continue
+                fw_image = open(
+                    base_name + "_" + str(page_num) + "_" + str(line_num) + ".png", "wb"
+                )
+                fw_image.write(current_line["pPicture"]["pictureData"]["pImageData"])
+                fw_image.close()
+                current_line["pPicture"]["pictureData"][
+                    "pImageData"
+                ] = os.path.basename(
+                    base_name + "_" + str(page_num) + "_" + str(line_num) + ".png"
+                )

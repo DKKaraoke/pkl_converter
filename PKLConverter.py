@@ -56,6 +56,7 @@ def main():
         track_header.parse_TrackHeader(fr)
         track_data = TrackData(offset)
         track_data.parse_TrackData(fr)
+        track_data.write_images(args.input)
         returnList = {
             "PklHeader": vars(header),
             "TrackHeader": vars(track_header),
@@ -64,7 +65,6 @@ def main():
         fw = codecs.open(args.input + ".json", "w", "utf-8")
         json.dump(returnList, fw, indent=2, ensure_ascii=False)
         fw.close()
-
 
 if __name__ == "__main__":
     main()
